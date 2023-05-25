@@ -3,34 +3,19 @@ RSpec.describe RubocopDirector::RubocopStats do
 
   let(:since) { "2023-01-01" }
 
-  let(:sed_command) { "sed '/todo/d' ./.rubocop.yml > tmpfile; mv tmpfile ./.rubocop.yml" }
-  let(:sed_stdout) { "" }
-  let(:sed_stderr) { "" }
+  let(:rubocop_todo_path) { "./.rubocop_todo.yml" }
+  let(:empty_yaml) { {}.to_yaml }
 
   let(:rubocop_command) { "bundle exec rubocop --format json" }
   let(:rubocop_stdout) { "" }
   let(:rubocop_stderr) { "" }
 
-  let(:checkout_command) { "git checkout ./.rubocop.yml" }
+  let(:checkout_command) { "git checkout ./.rubocop_todo.yml" }
 
   before do
-    allow(Open3).to receive(:capture3).with(sed_command).and_return([sed_stdout, sed_stderr])
+    allow(File).to receive(:write).with(rubocop_todo_path, empty_yaml)
     allow(Open3).to receive(:capture3).with(rubocop_command).and_return([rubocop_stdout, rubocop_stderr])
     allow(Open3).to receive(:capture3).with(checkout_command)
-  end
-
-  context "when sed returns errors" do
-    let(:sed_stderr) { "error" }
-
-    it "returns failure" do
-      expect(subject).to be_failure
-      expect(subject.failure).to eq("Failed to remove TODO from rubocop config: #{sed_stderr}")
-    end
-
-    it "not runs rubocop command" do
-      subject
-      expect(Open3).not_to have_received(:capture3).with(rubocop_command)
-    end
   end
 
   context "when rubocop returns no errors" do
@@ -68,9 +53,9 @@ RSpec.describe RubocopDirector::RubocopStats do
       )
     end
 
-    it "runs sed command" do
+    it "cleanups rubocop todo file" do
       subject
-      expect(Open3).to have_received(:capture3).with(sed_command)
+      expect(File).to have_received(:write).with(rubocop_todo_path, empty_yaml)
     end
 
     it "runs checkout command" do
@@ -87,9 +72,9 @@ RSpec.describe RubocopDirector::RubocopStats do
       expect(subject.failure).to eq("Failed to fetch rubocop stats: #{rubocop_stderr}")
     end
 
-    it "runs sed command" do
+    it "cleanups rubocop todo file" do
       subject
-      expect(Open3).to have_received(:capture3).with(sed_command)
+      expect(File).to have_received(:write).with(rubocop_todo_path, empty_yaml)
     end
 
     it "runs checkout command" do
